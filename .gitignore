@@ -1,6 +1,7 @@
 *.class
-
+*.log
+# Folders #
+test-output/
+target/classes/
+target/test-classes/
 # Package Files #
-*.jar
-*.war
-*.ear
