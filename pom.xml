@@ -13,9 +13,10 @@
 			UTF-8
 		</project.build.sourceEncoding>
 		<skipTests>false</skipTests>
-		<!-- <suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile> -->
+		<suiteXmlFile>src/test/resources/testng.xml</suiteXmlFile>
 		<preserve-order>true</preserve-order>
-		<org.springframework.version>3.0.5.RELEASE</org.springframework.version>
+		<org.springframework.version>3.0.5.RELEASE
+		</org.springframework.version>
 	</properties>
 
 
@@ -323,22 +324,23 @@
 				<artifactId>maven-archetype-plugin</artifactId>
 				<version>2.2</version>
 			</plugin>
-
-
-			<!-- Note: includes are ignored if you use a suiteXmlFiles section, shown 
-				below -->
-			<!-- You can specify a specific testng.xml file here <suiteXmlFiles> <suiteXmlFile>src/test/resources/testng-sample.xml</suiteXmlFile> 
-				</suiteXmlFiles> -->
-			<!-- Or dynamically with something like '-DsuiteXmlFile=src/test/resources/testng-sample.xml' -->
-			<!-- Build with '-DskipTests=true' to bypass test execution @ build time 
-				Default: false -->
-
-			<!-- <plugin> <groupId>org.apache.maven.plugins</groupId> <artifactId>maven-surefire-plugin</artifactId> 
-				<version>2.12</version> <configuration> <includes> <include>**/*.java</include> 
-				</includes> <suiteXmlFiles> <suiteXmlFile>${suiteXmlFile}</suiteXmlFile> 
-				</suiteXmlFiles> <skipTests>${skipTests}</skipTests> <testFailureIgnore>true</testFailureIgnore> 
-				<properties> <property> <name>listener</name> <value> </value> </property> 
-				</properties> </configuration> </plugin> -->
+			
+			<!-- Run TestNG tests -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>2.12</version>
+				<configuration>
+					<includes>
+						<include>**/*.java</include>
+					</includes>
+					<suiteXmlFiles>
+						<suiteXmlFile>${suiteXmlFile}</suiteXmlFile>
+					</suiteXmlFiles>
+					<skipTests>${skipTests}</skipTests>
+					<testFailureIgnore>false</testFailureIgnore>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 
