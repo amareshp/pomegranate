@@ -9,7 +9,7 @@ import com.qatrend.testutils.logging.PLogger;
 /**
  * This is a utility class that has various methods to do frequently used operations on Collections. 
  * 
- * @author <a href="https://github.com/amareshp">Amaresh Pattanaik (amaresh@visitamaresh.com)</a>
+ * @author <a href="http://visitamaresh.com" target=_blank>Amaresh Pattanaik (amaresh@visitamaresh.com)</a>
  *
  */
 public class CollectionUtil {

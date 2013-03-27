@@ -6,385 +6,255 @@ import java.util.ArrayList;
 import java.util.Properties;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
 
 import com.jcraft.jsch.Channel;
 import com.jcraft.jsch.ChannelExec;
 import com.jcraft.jsch.JSch;
 import com.jcraft.jsch.Session;
-import com.qatrend.testutils.collection.CollectionUtil;
 import com.qatrend.testutils.encryption.EncryptionUtil;
 import com.qatrend.testutils.encryption.MyUserInfo;
 import com.qatrend.testutils.logging.PLogger;
 import com.qatrend.testutils.regex.RegexUtil;
 
+/**
+ * Utility class for interacting with UNIX machines. 
+ * This class uses jsch which is java implementation of ssh
+ * 
+ * @author <a href="http://visitamaresh.com" target=_blank>Amaresh Pattanaik (amaresh@visitamaresh.com)</a>
+ *
+ */
 public class SSHUtil {
-	private static SSHUtil instance = null;
+	private static SSHUtil sInstance = null;
+	private JSch jsch;
 	private Session session;
 	private Channel channel;
-	private JSch jsch;
 	private MyUserInfo mui;
 	private String host;
 	private String username;
+	private String password;
 	private String outputStr;
 	private ArrayList<String> outputStrList;
 	private int exitStatus = -1;
-	private AuthType authType;
+	private SSHUtilOutput output = null;
+	private AuthType authType = AuthType.USER_PASS;
 	
 	public enum AuthType {
-		PrivateKey, EncCredentials
-	}
-	
-	public static SSHUtil getInstance(String rHost){
-		if(instance == null) {
-			// instantiate
-			String encCredentials = System.getenv("ENC_PWD");
-			if (encCredentials == null) {
-				encCredentials = System.getProperty("ENC_PWD");
-			}
-			if (encCredentials != null) {
-				instance = new SSHUtil( rHost, AuthType.EncCredentials );
-				instance.authType = AuthType.EncCredentials;
-			}
-			else {
-				instance = new SSHUtil( rHost, AuthType.PrivateKey );
-				instance.authType = AuthType.PrivateKey;
-			}
-			
-		}
-		return instance;
+		PRIVATE_KEY, ENC_CREDS, USER_PASS
 	}
 
-
+	/**
+	 * Assumes that the environment variable or runtime parameter ENC_USER has been set to the encrypted string for username
+	 * Assumes that the environment variable or runtime parameter ENC_PWD has been set to the encrypted string for password
+	 * 
+	 * @param rHost		the remote UNIX host. e.g. myhost.someserver.com
+	 * @return			an instance of SSHUtil
+	 */
 	public SSHUtil(String rHost) {
 		try {
 			this.jsch = new JSch();
-			EncryptionUtil encrUtil = new EncryptionUtil();
-			// get the Bluefin hostname and username
 			this.host = rHost;
-			// get the encrypted password string from maven parameters
-			String encCredentials = System.getenv("ENC_PWD");
-			if (encCredentials == null) {
-				encCredentials = System.getProperty("ENC_PWD");
-			}
-			// System.out.println("Encrypted credentials: " + encCredentials);
-			ArrayList<String> usrInfoList = encrUtil
-					.threePartDecrypt(encCredentials);
-			MyUserInfo rUI = new MyUserInfo(this.username, usrInfoList.get(2)); // 0=username,
-																				// 1=Windows
-																				// password,
-																				// 2=UNIX
-																				// password
-			this.mui = rUI;
+			EncryptionUtil encrUtil = new EncryptionUtil();
+			this.username = getEnvOrSystem("ENC_USER");
+			this.password = getEnvOrSystem("ENC_PWD");
+			//decrypt username and password
+			this.username = encrUtil.decrypt(this.username);
+			this.password = encrUtil.decrypt(this.password);
+			
+			this.session=jsch.getSession(this.username, this.host, 22);
+			this.session.setPassword(this.password);
+			this.session.connect(30000);
+			this.channel=session.openChannel("exec");  //shell , exec
+			this.channel.setInputStream(System.in);
+			this.channel.setOutputStream(System.out);
+			this.channel.connect(3000);
 		} catch (Exception ex) {
 			System.out.println("Exception: " + ex.getMessage());
 			ex.printStackTrace();
 		}
 	}
 
-	public SSHUtil(String rHost, MyUserInfo rUI) {
+	/**
+	 * Constructor that accepts the remote host name, username and password
+	 * 
+	 * @param remoteHost		the unix host name (e.g. domain.server.com)
+	 * @param username			the unix username
+	 * @param password			the unix password
+	 */
+	public SSHUtil(String remoteHost, String username, String password) {
 		try {
 			this.jsch = new JSch();
-			this.mui = rUI;
-			this.username = mui.username;
-			this.host = rHost;
+			this.host = remoteHost;
+			this.username = username;
+			this.password = password;
+			this.session = this.jsch.getSession(username, remoteHost, 22);
+			this.session.setPassword(password);
+			this.mui = new MyUserInfo(this.username, this.password);
+			this.mui.setPassword(password);
+			this.mui.setUsername(username);
+			this.session.setUserInfo(this.mui);
 		} catch (Exception ex) {
-			System.out.println("Exception: " + ex.getMessage());
-			ex.printStackTrace();
+			PLogger.getLogger().error( ex );
 		}
 	}
 
-	public SSHUtil(File pvtKeyFile, String rHost, String rUser) {
-		String passPhrase = "";
+	public SSHUtil(File pvtKeyFile, String passphrase, String rHost, String rUser) {
+		
+		if(passphrase == null){
+			passphrase = "";
+		}
 		String idName = "My Identification";
 		this.host = rHost;
 		this.username = rUser;
-		System.out.println("host: " + this.host + " username: " + this.username);
-		// this.mui = new MyUserInfo(this.username, "");
-		// mui.setUsername(this.username);
-		// mui.setPassphrase("");
-		// Hashtable<String, String> config = new Hashtable<String, String>();
-		// config.put(pvtKeyFile.getPath(), "ssh-dss");
-		// this.session.setConfig(config);
-
+		PLogger.getLogger().info("host: " + this.host + " username: " + this.username);
 		try {
 			// Authentication informaiton
 			byte[] keyArr = FileUtils.readFileToByteArray( pvtKeyFile );
 			this.jsch = new JSch();
-			this.jsch.addIdentity(idName, keyArr, null, passPhrase.getBytes());
-			this.jsch.addIdentity("src/test/resources/keys/id_dsa", "");
-			this.jsch.setKnownHosts("src/test/resources/keys/known_hosts");
+			this.jsch.addIdentity(idName, keyArr, null, passphrase.getBytes());
+			//this.jsch.addIdentity("src/test/resources/keys/id_dsa", "");
+			//this.jsch.setKnownHosts("src/test/resources/keys/known_hosts");
 
-			System.out.println("setting jsch identity using file: "
-					+ pvtKeyFile.getPath());
-			System.out.println("host key repo id: "
-					+ jsch.getHostKeyRepository().getKnownHostsRepositoryID());
+			PLogger.getLogger().info("setting jsch identity using file: "	+ pvtKeyFile.getPath());
+			PLogger.getLogger().info("host key repo id: "	+ jsch.getHostKeyRepository().getKnownHostsRepositoryID());
 		} catch (Exception ex) {
-			System.out.println("Exception: " + ex.getMessage());
+			PLogger.getLogger().error( ex );
 		}
 	}
 
-	public SSHUtil(String rHost, AuthType authType) {
-		switch(authType) {
-		case EncCredentials: new SSHUtil(rHost);
-		case PrivateKey: 
-			String passPhrase = "";
-			String idName = "My Identification";
-			this.host = rHost;
-			String encCredentials = System.getenv("ENC_PWD");
-			if (encCredentials == null) {
-				encCredentials = System.getProperty("ENC_PWD");
-			}
-			// System.out.println("Encrypted credentials: " + encCredentials);
-			EncryptionUtil encrUtil = new EncryptionUtil();
-			ArrayList<String> usrInfoList = encrUtil.threePartDecrypt(encCredentials);
-			MyUserInfo rUI = new MyUserInfo(this.username, usrInfoList.get(2)); // 0=username,
-																				// 1=Windows
-																				// password,
-																				// 2=UNIX
-																				// password
-			this.mui = rUI;
-			this.username = rUI.username;
-			String keyFilePath = "src/test/resources/keys/" + this.username + "_key";
-			String knownHostsFilePath = "src/test/resources/keys/" + this.username + "_known_hosts";
-			System.out.println("host: " + this.host + " username: " + this.username + " key file: " + keyFilePath);
-			File pvtKeyFile = new File(keyFilePath);
-			// this.mui = new MyUserInfo(this.username, "");
-			// mui.setUsername(this.username);
-			// mui.setPassphrase("");
-			//Hashtable<String, String> config = new Hashtable<String, String>();
-			//config.put(pvtKeyFile.getPath(), "ssh-dss");
-			//this.session.setConfig(config);
-
-			try {
-				// Authentication informaiton
-				
-				byte[] keyArr = FileUtils.readFileToByteArray( pvtKeyFile );
-				this.jsch = new JSch();
-				this.jsch.addIdentity(idName, keyArr, null, passPhrase.getBytes());
-				//this.jsch.addIdentity("src/test/resources/keys/id_dsa", "");
-				//this.jsch.setKnownHosts("src/test/resources/keys/known_hosts");
-				this.jsch.setKnownHosts( knownHostsFilePath );
-				this.session=jsch.getSession(this.username, this.host, 22);
-		        Properties config = new Properties();   
-		        config.setProperty("StrictHostKeyChecking", "no");   
-		        this.session.setConfig(config);   
-
-				System.out.println("setting jsch identity using file: "
-						+ keyFilePath );
-				System.out.println("host key repo id: "
-						+ jsch.getHostKeyRepository().getKnownHostsRepositoryID());
-			} catch (Exception ex) {
-				System.out.println("Exception: " + ex.getMessage());
-			}
-		
-		}
-		
-	}
-
-	
-	
-	public int execCmd(String cmd) {
-		CollectionUtil colUtil = new CollectionUtil();
+	public SSHUtilOutput execCmd(String cmd) {
+		PLogger.getLogger().info("Host: " + this.host + " username: " + this.username);
+		PLogger.getLogger().info("Executing command: " + cmd);
 		try {
-			this.session = this.jsch.getSession(this.username, host,
-					22);
-			this.session.setUserInfo(this.mui);
-			this.session.connect();
-			this.channel = session.openChannel("exec");
-			((ChannelExec) channel).setCommand(cmd);
-			this.setOutput();
-			// this.disconnect();
+			this.session.connect(30000);
+			this.channel=this.session.openChannel("exec");  //shell , exec
+			((ChannelExec) this.channel).setCommand(cmd);
+			this.channel.connect(3000);
 			
-		} catch (Exception ex) {
-			System.out.println("Exception: " + ex.getMessage());
-			ex.printStackTrace();
-		}
-		return this.exitStatus;
-	}
-
-	public int execShellCmd(String cmd) {
-		try {
-			this.session = this.jsch.getSession(this.username, this.host, 22);
-			// this.session.setUserInfo( this.mui );
-			// this.session.setConfig("StrictHostKeyChecking", "no");
-			this.session.connect();
-			this.channel = this.session.openChannel("exec");
-			((ChannelExec) channel).setCommand(cmd);
-			//cmd = cmd + "\n";
-			//InputStream is = new ByteArrayInputStream(cmd.getBytes("UTF-8"));
-			//channel.setInputStream(System.in);
-			//Thread.sleep(1000);
-			//channel.setInputStream(is);
-			channel.connect();
+			this.channel.setInputStream(null);
+			this.channel.setOutputStream(System.out);
+			((ChannelExec) this.channel).setErrStream(System.out);
+			
 			this.setOutput();
-			//channel.setOutputStream(System.out);
-			// this.setOutput();
-			this.disconnect();
+			this.channel.disconnect();
+			this.session.disconnect();
 		} catch (Exception ex) {
-			System.out.println("Exception: " + ex.getMessage());
-			ex.printStackTrace();
+			PLogger.getLogger().error( ex );
 		}
-		return this.exitStatus;
+		PLogger.getLogger().info("Exit status: " + this.exitStatus);
+		PLogger.getLogger().debug("Command output:\n" + this.outputStr );
+		return this.output;
 	}
 
-	public static void readAndPrintOutput(Channel channel) {
+	/**
+	 * Read and print the output from the JSch Channel
+	 */
+	private void readAndPrintOutput() {
 		try {
-			System.out.println("INFO: START - output from "
-					+ channel.getSession().getHost());
-			channel.setInputStream(null);
+			PLogger.getLogger().info("START - output from " + channel.getSession().getHost());
+			//this.channel.setInputStream(null);
 			// FileOutputStream fos=new FileOutputStream("/tmp/stderr");
 			// ((ChannelExec)channel).setErrStream(fos);
-			((ChannelExec) channel).setErrStream(System.err);
-			InputStream in = channel.getInputStream();
-			channel.connect();
+			//this.channel.connect();
+			((ChannelExec) this.channel).setErrStream(System.err);
+			InputStream in = this.channel.getInputStream();
+			//this.channel.connect();
 			byte[] tmp = new byte[1024];
 			while (true) {
 				while (in.available() > 0) {
 					int i = in.read(tmp, 0, 1024);
 					if (i < 0)
 						break;
-					System.out.print(new String(tmp, 0, i));
+					PLogger.getLogger().info(new String(tmp, 0, i));
 				}
 				if (channel.isClosed()) {
-					System.out.println("exit-status: "
-							+ channel.getExitStatus());
+					PLogger.getLogger().info("exit-status: " + this.channel.getExitStatus());
 					break;
 				}
 				Thread.sleep(1000);
 			}
-			System.out.println("INFO: END - output from "
-					+ channel.getSession().getHost());
+			PLogger.getLogger().info("END - output from " + this.channel.getSession().getHost());
 		} catch (Exception ex) {
 			System.out.println("Exception: " + ex.getMessage());
 			ex.printStackTrace();
 		}
 	}
 
-	public void readAndPrintOutput() {
+	/**
+	 * Set the output of a command execution.
+	 * 
+	 */
+	private void setOutput() {
+		this.output = new SSHUtilOutput();
+		StringBuffer outputBuf = new StringBuffer();
 		try {
-			System.out.println("INFO: START - output from "
-					+ channel.getSession().getHost());
-			this.channel.setInputStream(null);
-			((ChannelExec) this.channel).setErrStream(System.err);
 			InputStream in = this.channel.getInputStream();
-			this.channel.connect();
 			byte[] tmp = new byte[1024];
 			while (true) {
 				while (in.available() > 0) {
 					int i = in.read(tmp, 0, 1024);
 					if (i < 0)
 						break;
-					System.out.print(new String(tmp, 0, i));
+					//PLogger.getLogger().info( new String(tmp, 0, i) );
+					outputBuf.append(new String(tmp, 0, i));
 				}
 				if (channel.isClosed()) {
-					System.out.println("exit-status: "
-							+ this.channel.getExitStatus());
+					//PLogger.getLogger().info("exit-status: " + this.channel.getExitStatus());
 					break;
 				}
 				Thread.sleep(2000);
 			}
-			System.out.println("INFO: END - output from "
-					+ this.channel.getSession().getHost());
 		} catch (Exception ex) {
-			System.out.println("Exception: " + ex.getMessage());
-			ex.printStackTrace();
+			PLogger.getLogger().error( ex );
 		}
-	}
-
-	// output[0] = output string, output[1]=exit status
-	public ArrayList<String> getOutput() {
-		ArrayList<String> output = new ArrayList<String>();
-		StringBuffer outputStr = new StringBuffer();
-		try {
-			// System.out.println("INFO: START - output from " +
-			// channel.getSession().getHost());
-			this.channel.setInputStream(null);
-			((ChannelExec) this.channel).setErrStream(System.err);
-			InputStream in = this.channel.getInputStream();
-			this.channel.connect();
-			byte[] tmp = new byte[1024];
-			while (true) {
-				while (in.available() > 0) {
-					int i = in.read(tmp, 0, 1024);
-					if (i < 0)
-						break;
-					// System.out.print(new String(tmp, 0, i));
-					outputStr.append(new String(tmp, 0, i));
-				}
-				if (channel.isClosed()) {
-					System.out.println("exit-status: "
-							+ this.channel.getExitStatus());
-					break;
-				}
-				Thread.sleep(2000);
-			}
-			// System.out.println("INFO: END - output from " +
-			// this.channel.getSession().getHost());
-		} catch (Exception ex) {
-			System.out.println("Exception: " + ex.getMessage());
-			ex.printStackTrace();
-		}
-		output.add(outputStr.toString());
-		String exitStatus = Integer.toString(this.channel.getExitStatus());
-		output.add(exitStatus);
-		channel.disconnect();
-		return output;
-	}
-
-	public void setOutput() {
-		StringBuffer outputStr = new StringBuffer();
-		try {
-			// System.out.println("INFO: START - output from " +
-			// channel.getSession().getHost());
-			this.channel.setInputStream(null);
-			((ChannelExec) this.channel).setErrStream(System.err);
-			InputStream in = this.channel.getInputStream();
-			this.channel.connect();
-			byte[] tmp = new byte[1024];
-			while (true) {
-				while (in.available() > 0) {
-					int i = in.read(tmp, 0, 1024);
-					if (i < 0)
-						break;
-					// System.out.print(new String(tmp, 0, i));
-					outputStr.append(new String(tmp, 0, i));
-				}
-				if (channel.isClosed()) {
-					System.out.println("exit-status: "
-							+ this.channel.getExitStatus());
-					break;
-				}
-				Thread.sleep(2000);
-			}
-			// System.out.println("INFO: END - output from " +
-			// this.channel.getSession().getHost());
-		} catch (Exception ex) {
-			System.out.println("Exception: " + ex.getMessage());
-			ex.printStackTrace();
-		}
-		RegexUtil reUtil = new RegexUtil();
-		this.outputStr = outputStr.toString();
-		System.out.println(outputStr);
-		this.outputStrList = reUtil.getLinesList(this.outputStr);
+		this.output.setOutputTxt( outputBuf.toString() );
+		this.outputStr = outputBuf.toString();
+		this.output.setReturnCode( this.channel.getExitStatus() );
 		this.exitStatus = this.channel.getExitStatus();
-		// output.add(outputStr.toString());
-		// String exitStatus = Integer.toString(this.channel.getExitStatus());
-		// output.add( exitStatus );
-		channel.disconnect();
+		RegexUtil reUtil = new RegexUtil();
+		this.outputStrList = reUtil.getLinesList(this.outputStr);
 	}
 
+	/**
+	 * Get the output as an ArrayList<String>
+	 * 
+	 * @return		an SSHUtilOutput object. The output object has output text and return code.
+	 */
+	private SSHUtilOutput getOutput() {
+		return this.output;
+	}
+
+	
+	/**
+	 * Get the output text as an ArrayList of String
+	 * 
+	 * @return		An ArrayList of String. Each line of output is one element in the ArrayList.
+	 */
 	public ArrayList<String> getOutputStrList() {
 		return this.outputStrList;
 	}
 
+	/**
+	 * Get the output as one String
+	 * 
+	 * @return		The output as a String
+	 */
 	public String getOutputStr() {
 		return this.outputStr;
 	}
 
+	/**
+	 * Get the exit status of the command execution.
+	 * 
+	 * @return		the exit status
+	 */
 	public int getExitStatus() {
 		return this.exitStatus;
 	}
 
+	/**
+	 * Disconnect the channel and session exclusively.
+	 */
 	public void disconnect() {
 		this.channel.disconnect();
 		this.session.disconnect();
@@ -394,17 +264,19 @@ public class SSHUtil {
 		return session;
 	}
 
-	public void setSession(Session session) {
-		this.session = session;
+	/**
+	 * get the value of an environment or system property. First check if a property by that name exists in the environment properties.
+	 * If the property does not exist in the environment, check the system properties.
+	 * 
+	 * @param property		name of the property to look for.
+	 * @return				return the value of the property. Return null if the property is not defined in the environment or the system properties.
+	 */
+	private String getEnvOrSystem(String property) {
+		String value = System.getenv( property );
+		if (value == null) {
+			value = System.getProperty( property );
+		}
+		return value;
 	}
-
-	public Channel getChannel() {
-		return channel;
-	}
-
-	public void setChannel(Channel channel) {
-		this.channel = channel;
-	}
-
 
 }

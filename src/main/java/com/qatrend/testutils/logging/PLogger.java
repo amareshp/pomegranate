@@ -47,7 +47,7 @@ public class PLogger {
 	    		prop.setProperty("log4j.rootLogger", logLevel + ", file, stdout");
 	    		prop.setProperty("log4j.appender.file", "org.apache.log4j.RollingFileAppender" );
 	    		prop.setProperty("log4j.appender.file.File", "bluefinFiles/bluefinLogs/platypus.log" );
-	    		prop.setProperty("log4j.appender.file.MaxFileSize", "3MB" );
+	    		prop.setProperty("log4j.appender.file.MaxFileSize", "1MB" );
 	    		prop.setProperty("log4j.appender.file.MaxBackupIndex", "1");
 	    		prop.setProperty("log4j.appender.file.layout", "org.apache.log4j.PatternLayout" );
 	    		//prop.setProperty("log4j.appender.file.layout.ConversionPattern", "%d{yyyy-MM-dd HH:mm:ss} %-5p %c{1}:%L - %m%n");

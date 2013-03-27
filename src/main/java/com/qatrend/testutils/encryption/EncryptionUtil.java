@@ -19,12 +19,16 @@ import com.qatrend.testutils.logging.PLogger;
 public class EncryptionUtil {
 
 	private static String sSecretKey = "somesecretkey";
+	
+	public static void setKey(String secretKey){
+		sSecretKey = secretKey;
+	}
+
 	/**
-	 * Turns array of bytes into string
+	 * get the a string of hex codes
 	 * 
-	 * @param buf
-	 *            Array of bytes to convert to hex string
-	 * @return Generated hex string
+	 * @param		buf		an array of bytes
+	 * @return		a string of hex codes for the input array of bytes.
 	 */
 	public static String asHex(byte buf[]) {
 		StringBuffer strbuf = new StringBuffer(buf.length * 2);

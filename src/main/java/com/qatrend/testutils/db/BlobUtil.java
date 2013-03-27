@@ -1,6 +1,5 @@
 package com.qatrend.testutils.db;
 
-import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -21,7 +20,6 @@ import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
-import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -29,15 +27,18 @@ import java.util.List;
 import java.util.Properties;
 import java.util.zip.InflaterInputStream;
 
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
+import com.qatrend.testutils.logging.PLogger;
 
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-
+/**
+ * Utility to read Blob column from a Oracle database table.
+ * 
+ * @author <a href="http://visitamaresh.com" target=_blank>Amaresh Pattanaik (amaresh@visitamaresh.com)</a>
+ *
+ */
 public class BlobUtil {
+	/** jdbc url of the oracle database 
+	 * e.g. jdbc:oracle:thin:server1.host.com:2231:servicename
+	 * */
 	private static String sJdbcUrl = "";
 	private static String sDbUser = "";
 	private static String sDbPass = "";
@@ -77,6 +78,44 @@ public class BlobUtil {
 		}
 	}
 
+	/**
+	 * 
+	 * @param jdbcUrl		the jdbc url e.g. jdbc:oracle:thin:server1.host.com:2231:servicename
+	 * @param dbUser		database username
+	 * @param dbPassword	database password
+	 * @param sqlQuery		the sql query to return only one row of the BLOB column. 
+	 * 						e.g. if the primary key is ID, table name is TABLE_X, Blob column is BLOB_X, 
+	 * 						query might be <i>SELECT BLOB_X FROM TABLE_X WHERE ID=1</i>
+	 * @return				string representation of the blob value.
+	 */
+	public static String getBlobAsString(String jdbcUrl, String dbUser, String dbPassword, String sqlQuery){
+		sJdbcUrl = jdbcUrl;
+		sDbUser = dbUser;
+		sDbPass = dbPassword;
+		String blobStr = null;
+		try{
+			Class.forName("oracle.jdbc.driver.OracleDriver");
+			Connection conn = DriverManager.getConnection(sJdbcUrl, sDbUser, sDbPass);
+			PreparedStatement stmnt = conn.prepareStatement(sqlQuery);
+			ResultSet rs = stmnt.executeQuery();
+			Blob aBlob = rs.getBlob(1);
+			byte[] allBytesInBlob = aBlob.getBytes(1, (int) aBlob.length());
+			blobStr = convertCompressedBinaryToString(allBytesInBlob);
+			conn.close();
+			stmnt.close();
+		}
+		catch(Exception ex){
+			PLogger.getLogger().error(ex);
+		}
+		return blobStr;
+	}
+	
+	/**
+	 * Get a comma separated string of values from an ArrayList
+	 * 
+	 * @param		list
+	 * @return		comma separated String of values.
+	 */
 	public static String listToString(ArrayList<String> list){
 		String retStr = "";
 		for(String str : list){
@@ -88,7 +127,19 @@ public class BlobUtil {
 	}
 
 
-	public static String printBlobAsString(String jdbcUrl, String tableName, int columnName, List<String> varList) {
+	/**
+	 * This method assumes that a particular column contains a BLOB of a String of values separated by the global variable sValSeparator
+	 * You can set the sValSeparator to whatever is the separator in your BLOB field.
+	 * The list of variable names whose values are stored in the BLOB is given as an input.
+	 * For each variable name, the values from each row are printed
+	 * 
+	 * @param jdbcUrl		jdbc url of the database
+	 * @param tableName		name of the table
+	 * @param columnName	name of the column that has blob data
+	 * @param varList		list of names of variables
+	 * @return				nothing
+	 */
+	public static void printBlobAsString(String jdbcUrl, String tableName, int columnName, List<String> varList) {
 		sJdbcUrl = jdbcUrl;
 		//get the list of variables
 		//get the list of variables for the model. 
@@ -153,9 +204,20 @@ public class BlobUtil {
 		}
 		// value = decodeCharByteArray(allBytesInBlob, "US-ASCII"); //US-ASCII ,
 		// UTF-8
-		return value;
 	}
 
+	/**
+	 * This method assumes that a particular column contains a BLOB of a String of values separated by the global variable sValSeparator
+	 * You can set the sValSeparator to whatever is the separator in your BLOB field.
+	 * The list of variable names whose values are stored in the BLOB is given as an input.
+	 * For each variable name, the variable name and list of values are stored in a map
+	 * 
+	 * @param jdbcUrl		jdbc url for connecting to the database
+	 * @param tableName		name of the database table
+	 * @param columnName	name of the database column
+	 * @param varList		list of names of the variables
+	 * @return				A HashMap that has key = name of variable and value = list of values for that variable. 
+	 */
 	public static HashMap<String, ArrayList<String>> getVariableValuesFromBlob(String jdbcUrl, String tableName, String columnName, List<String> varList) {
 		HashMap<String, ArrayList<String>> retMap = new HashMap<String, ArrayList<String>>();
 		ArrayList<String> varValList = new ArrayList<String>();

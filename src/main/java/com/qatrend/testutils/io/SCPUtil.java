@@ -39,12 +39,12 @@ public class SCPUtil {
 				encCredentials = System.getProperty("ENC_PWD");
 			}
 			if (encCredentials != null) {
-				instance = new SCPUtil( AuthType.EncCredentials );
-				instance.authType = AuthType.EncCredentials;
+				instance = new SCPUtil( AuthType.ENC_CREDS );
+				instance.authType = AuthType.ENC_CREDS;
 			}
 			else {
-				instance = new SCPUtil( AuthType.PrivateKey );
-				instance.authType = AuthType.PrivateKey;
+				instance = new SCPUtil( AuthType.PRIVATE_KEY );
+				instance.authType = AuthType.PRIVATE_KEY;
 			}
 		}
 		return instance;
@@ -76,15 +76,15 @@ public class SCPUtil {
 			    this.session.setUserInfo(this.mui);
 		        this.session.setConfig(config);   
 
-		        this.authType = AuthType.EncCredentials;
+		        this.authType = AuthType.ENC_CREDS;
 			}
 			else{
 				if(sshUser.equals("ppdeploy")) {
 					//do nothing
 				}
 				else {
-					this.authType = authType.PrivateKey;
-					new SCPUtil(AuthType.PrivateKey);
+					this.authType = authType.PRIVATE_KEY;
+					new SCPUtil(AuthType.PRIVATE_KEY);
 				}
 			}
 			
@@ -97,8 +97,8 @@ public class SCPUtil {
 
 	public SCPUtil( AuthType authType ) {
 		switch(authType) {
-		case EncCredentials: new SCPUtil();
-		case PrivateKey: 
+		case ENC_CREDS: new SCPUtil();
+		case PRIVATE_KEY: 
 			String passPhrase = "";
 			String idName = "My Identification";
 			this.host = defaultHost;
@@ -222,7 +222,7 @@ public class SCPUtil {
 	try{
 		this.connect();
 		System.out.println("INFO: Copying local file " + lFilePath + " to remote location: " + rDir + "/" + rFileName);
-		SSHUtil sshu = new SSHUtil( this.host, this.mui);
+		SSHUtil sshu = new SSHUtil( this.host );
 		sshu.execCmd("mkdir " + rDir); //relative or absolute directory path
         this.channel.cd(rDir);   
         this.channel.put(new FileInputStream(lFilePath), rFileName);
