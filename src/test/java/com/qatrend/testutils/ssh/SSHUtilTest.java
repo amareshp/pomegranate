@@ -9,14 +9,14 @@ import com.qatrend.testutils.logging.PLogger;
 @Test
 public class SSHUtilTest {
 	public void sshTest(){
-		String host = "stage2idi02.qa.paypal.com";
-		String user = "apattanaik";
-		String pwd = "Jenkins@14";
+		String host = "xxx.serverx.com";
+		String user = "xxx";
+		String pwd = "xxx";
 		SSHUtil sshUtil = new SSHUtil(host, user, pwd);
 		SSHUtilOutput out = sshUtil.execCmd("pwd;");
 		PLogger.getLogger().info("output = " + out.getOutputTxt());
 		
-		String keyFilePath = "C:\\Users\\apattanaik\\.ssh\\id_dsa";
+		String keyFilePath = "C:\\Users\\username\\.ssh\\id_dsa";
 		File keyFile = new File(keyFilePath);
 		sshUtil = new SSHUtil(keyFile, "", host, user);
 		out = sshUtil.execCmd("hostname;");
