@@ -90,19 +90,35 @@ public class SSHUtil {
 			this.session = this.jsch.getSession(username, remoteHost, 22);
 			this.session.setPassword(password);
 			this.mui = new MyUserInfo(this.username, this.password);
-			this.mui.setPassword(password);
-			this.mui.setUsername(username);
+			//this.mui.setPassword(password);
+			//this.mui.setUsername(username);
 			this.session.setUserInfo(this.mui);
 		} catch (Exception ex) {
 			PLogger.getLogger().error( ex );
 		}
 	}
 
+	/**
+	 * Constructor with private key file. Use DSA key
+	 * Refer to <a href="http://www.cyberciti.biz/faq/ssh-password-less-login-with-dsa-publickey-authentication/">ssh key setup</a>
+	 * use command ssh-keygen -t dsa
+	 * chmod 755 .ssh
+	 * scp ~/.ssh/id_dsa.pub user@jerry:.ssh/authorized_keys
+	 * 
+	 * on remote server
+	 * chmod 600 ~/.ssh/authorized_keys
+	 * 
+	 * @param pvtKeyFile
+	 * @param passphrase
+	 * @param rHost
+	 * @param rUser
+	 */
 	public SSHUtil(File pvtKeyFile, String passphrase, String rHost, String rUser) {
 		
 		if(passphrase == null){
 			passphrase = "";
 		}
+		
 		String idName = "My Identification";
 		this.host = rHost;
 		this.username = rUser;
@@ -112,9 +128,14 @@ public class SSHUtil {
 			byte[] keyArr = FileUtils.readFileToByteArray( pvtKeyFile );
 			this.jsch = new JSch();
 			this.jsch.addIdentity(idName, keyArr, null, passphrase.getBytes());
-			//this.jsch.addIdentity("src/test/resources/keys/id_dsa", "");
-			//this.jsch.setKnownHosts("src/test/resources/keys/known_hosts");
-
+			//this.jsch.addIdentity(pvtKeyFile.getAbsolutePath(), passphrase);
+			//this.jsch.setKnownHosts("C:\\Users\\xxxx\\.ssh\\known_hosts");
+			this.session = this.jsch.getSession(rUser, rHost, 22);
+			this.session.setPassword(passphrase);
+			this.mui = new MyUserInfo(this.username);
+			this.session.setUserInfo(this.mui);
+			
+			
 			PLogger.getLogger().info("setting jsch identity using file: "	+ pvtKeyFile.getPath());
 			PLogger.getLogger().info("host key repo id: "	+ jsch.getHostKeyRepository().getKnownHostsRepositoryID());
 		} catch (Exception ex) {
@@ -271,7 +292,7 @@ public class SSHUtil {
 	 * @param property		name of the property to look for.
 	 * @return				return the value of the property. Return null if the property is not defined in the environment or the system properties.
 	 */
-	private String getEnvOrSystem(String property) {
+	public static String getEnvOrSystem(String property) {
 		String value = System.getenv( property );
 		if (value == null) {
 			value = System.getProperty( property );

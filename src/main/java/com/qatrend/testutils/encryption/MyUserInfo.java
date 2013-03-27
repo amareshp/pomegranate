@@ -4,6 +4,7 @@ import java.util.ArrayList;
 
 import com.jcraft.jsch.UserInfo;
 import com.qatrend.testutils.logging.PLogger;
+import com.qatrend.testutils.ssh.SSHUtil;
 
 /**
  * This class stores the information about the user
@@ -19,15 +20,14 @@ public class MyUserInfo implements UserInfo {
 	private String password;
 
 	/**
-	 * Constructor with username and password as input
+	 * default constructor. Username is the value of java property user.name
 	 * 
-	 * @param uName		User's username
-	 * @param password	User's password
 	 */
-	public MyUserInfo(String uName, String password){
+	public MyUserInfo(){
 		try{
-			this.username = uName;
-			this.password = password;
+			String uName = SSHUtil.getEnvOrSystem("user.name");
+			this.setUsername(uName);
+			this.setPassword("");
 		}
 		catch(Exception ex){
 			PLogger.getLogger().error( ex );
@@ -35,22 +35,36 @@ public class MyUserInfo implements UserInfo {
 	}
 
 	/**
-	 * Construct a MyUserInfo object from encrypted credentials
+	 * Constructor with username and password will be ""
 	 * 
-	 * @param encCredentials		
-	 * @param osType
+	 * @param uName		User's username
 	 */
-	public MyUserInfo(String encCredentials){
+	public MyUserInfo(String uName){
 		try{
-			EncryptionUtil encrUtil = new EncryptionUtil();
-			ArrayList<String> usrInfoList = encrUtil.threePartDecrypt(encCredentials);
-			this.username = usrInfoList.get(0);
-			this.password = usrInfoList.get(1);
+			this.setUsername(uName);
+			this.setPassword("");
 		}
 		catch(Exception ex){
-			PLogger.getLogger().error("Exception: " + ex.getMessage());
+			PLogger.getLogger().error( ex );
 		}
 	}
+	
+	/**
+	 * Constructor with username and password as input
+	 * 
+	 * @param uName		User's username
+	 * @param password	User's password
+	 */
+	public MyUserInfo(String uName, String password){
+		try{
+			this.setUsername(uName);
+			this.setPassword(password);
+		}
+		catch(Exception ex){
+			PLogger.getLogger().error( ex );
+		}
+	}
+
 
 	public String getUsername() {
 		return this.username;
