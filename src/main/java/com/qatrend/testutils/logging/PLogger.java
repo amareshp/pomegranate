@@ -14,6 +14,7 @@ import org.apache.log4j.PropertyConfigurator;
 public class PLogger {
 	private static Logger logger = null;
 	private static final String LOG4J_CONFIG = "src/main/resources/log4j.properties";
+	
 	public static Logger getLogger() {
     	Properties prop = new Properties();
 		if (logger == null) {
