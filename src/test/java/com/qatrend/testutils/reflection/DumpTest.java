@@ -2,6 +2,8 @@ package com.qatrend.testutils.reflection;
 
 import org.testng.annotations.Test;
 
+import com.qatrend.pomegranate.reflection.ReflectionUtil;
+
 
 @Test
 public class DumpTest {

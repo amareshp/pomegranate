@@ -4,7 +4,9 @@ import java.io.File;
 
 import org.testng.annotations.Test;
 
-import com.qatrend.testutils.logging.PLogger;
+import com.qatrend.pomegranate.logging.PLogger;
+import com.qatrend.pomegranate.ssh.SSHUtil;
+import com.qatrend.pomegranate.ssh.SSHUtilOutput;
 
 @Test
 public class SSHUtilTest {

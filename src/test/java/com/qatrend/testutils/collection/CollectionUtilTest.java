@@ -6,7 +6,8 @@ import java.util.List;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
-import com.qatrend.testutils.logging.PLogger;
+import com.qatrend.pomegranate.collection.CollectionUtil;
+import com.qatrend.pomegranate.logging.PLogger;
 
 @Test
 public class CollectionUtilTest {
