@@ -1,4 +1,4 @@
-package com.qatrend.testutils.reflection;
+package com.qatrend.pomegranate.reflection;
 
 public class PersonBean {
 	private String firstName;

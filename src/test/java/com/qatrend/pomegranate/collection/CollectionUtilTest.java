@@ -1,4 +1,4 @@
-package com.qatrend.testutils.collection;
+package com.qatrend.pomegranate.collection;
 
 import java.util.ArrayList;
 import java.util.List;

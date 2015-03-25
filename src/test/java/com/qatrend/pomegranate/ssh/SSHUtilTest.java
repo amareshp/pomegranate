@@ -1,4 +1,4 @@
-package com.qatrend.testutils.ssh;
+package com.qatrend.pomegranate.ssh;
 
 import java.io.File;
 

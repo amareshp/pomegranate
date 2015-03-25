@@ -1,4 +1,4 @@
-package com.qatrend.testutils.reflection;
+package com.qatrend.pomegranate.reflection;
 
 import org.testng.annotations.Test;
 
