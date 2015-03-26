@@ -13,19 +13,23 @@ import com.qatrend.pomegranate.logging.PLogger;
 /**
  * Database utility class
  * 
- * <ul><b>Oracle</b>
+ * <ul>
+ * <li>Oracle</li>
  * <li>Driver - "oracle.jdbc.driver.OracleDriver"</li>
  * <li>JDBC Url - jdbc:oracle:thin:@//[HOST][:PORT]/SERVICE e.g. "jdbc:oracle:thin:@//myhost:1521/orcl"</li>
  * </ul>
- * <ul><b>MySql</b>
+ * <ul>
+ * <li>MySql</li>
  * <li>Driver - "com.mysql.jdbc.Driver"</li>
- * <li>JDBC Url - jdbc:mysql://host:port/database_name OR jdbc:mysql://host:port/database_name?property1=value1&property2=value2. e.g. jdbc:mysql://host:port/database_name?user=root&password=root&database=mydb</li>
+ * <li>JDBC Url - jdbc:mysql://host:port/database_name OR jdbc:mysql://host:port/database_name?property1=value1&amp;property2=value2. e.g. jdbc:mysql://host:port/database_name?user=root&amp;password=root&amp;database=mydb</li>
  * </ul>
- * <ul><b>SqlServer</b>
+ * <ul>
+ * <li>SqlServer</li>
  * <li>Driver - "com.microsoft.sqlserver.jdbc.SQLServerDriver"</li>
  * <li>JDBC Url - jdbc:jtds:sqlserver://host:port/database_name e.g. jdbc:jtds:sqlserver://neptune.acme.com:1433/test</li>
  * </ul>
- * <ul><b>MSAccess</b>
+ * <ul>
+ * <li>MSAccess</li>
  * <li>Driver - "sun.jdbc.odbc.JdbcOdbcDriver"</li>
  * <li>JDBC Url - "jdbc:odbc:dsn" e.g. "jdbc:odbc:myodbcdsn"</li>
  * </ul>

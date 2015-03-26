@@ -51,7 +51,8 @@
 		<preserve-order>true</preserve-order>
 		<org.springframework.version>3.0.5.RELEASE
 		</org.springframework.version>
-		<additionalparam>-Xdoclint:none</additionalparam>
+		<!-- Add this to get rid of java 8 javadoc errors -->
+		<!--  <additionalparam>-Xdoclint:none</additionalparam>  -->
 	</properties>
 
 

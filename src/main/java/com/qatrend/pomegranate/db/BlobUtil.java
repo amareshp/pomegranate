@@ -113,8 +113,8 @@ public class BlobUtil {
 	/**
 	 * Get a comma separated string of values from an ArrayList
 	 * 
-	 * @param		list
-	 * @return		comma separated String of values.
+	 * @param	list arraylist
+	 * @return	String comma separated String of values.
 	 */
 	public static String listToString(ArrayList<String> list){
 		String retStr = "";
@@ -137,7 +137,6 @@ public class BlobUtil {
 	 * @param tableName		name of the table
 	 * @param columnName	name of the column that has blob data
 	 * @param varList		list of names of variables
-	 * @return				nothing
 	 */
 	public static void printBlobAsString(String jdbcUrl, String tableName, int columnName, List<String> varList) {
 		sJdbcUrl = jdbcUrl;

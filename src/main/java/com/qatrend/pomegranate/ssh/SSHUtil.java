@@ -48,7 +48,6 @@ public class SSHUtil {
 	 * Assumes that the environment variable or runtime parameter ENC_PWD has been set to the encrypted string for password
 	 * 
 	 * @param rHost		the remote UNIX host. e.g. myhost.someserver.com
-	 * @return			an instance of SSHUtil
 	 */
 	public SSHUtil(String rHost) {
 		try {
@@ -108,10 +107,10 @@ public class SSHUtil {
 	 * on remote server
 	 * chmod 600 ~/.ssh/authorized_keys
 	 * 
-	 * @param pvtKeyFile
-	 * @param passphrase
-	 * @param rHost
-	 * @param rUser
+	 * @param pvtKeyFile private key file
+	 * @param passphrase passphrase
+	 * @param rHost remote host
+	 * @param rUser remote host user
 	 */
 	public SSHUtil(File pvtKeyFile, String passphrase, String rHost, String rUser) {
 		

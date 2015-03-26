@@ -32,6 +32,7 @@ public class CollectionUtil {
 	 * Method for getting a String from an List of Objects.
 	 * 
 	 * @param	list	an ArrayList of Object
+	 * @param  separator separator String
 	 * @return	str		a String which is a concatenation of elements separated by the separator parameter
 	 */
 	public String getStringFromList(List<Object> list, String separator) {
@@ -63,7 +64,7 @@ public class CollectionUtil {
 	 * Print a List - one element per line
 	 * 
 	 * @param	list	A list Object
-	 * @return			Nothing
+	 * 
 	 */
 	public static void printList(List<String> list) {
 		for(String str : list) {
@@ -72,10 +73,10 @@ public class CollectionUtil {
 	}
 	
 	/**
-	 * Get an ArrayList<String> from a String of comma separated values 
+	 * Get an ArrayList from a String of comma separated values 
 	 * 
-	 * @param  csvStr  String of comma separated values
-	 * @return         ArrayList<String> of the values
+	 * @param  csvStr  comma separated values
+	 * @return ArrayList ArrayList of the values
 	 */
 	public static ArrayList<String> getListFromCsvString(String csvStr) {
 		ArrayList<String> arrList = new ArrayList<String>();
