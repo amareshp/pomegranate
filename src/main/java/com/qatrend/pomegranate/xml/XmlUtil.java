@@ -1,559 +1,474 @@
 package com.qatrend.pomegranate.xml;
 
 import java.io.ByteArrayInputStream;
-import java.io.File;
-import java.io.IOException;
 import java.io.InputStream;
-import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
-import javax.xml.transform.TransformerConfigurationException;
-import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
-import javax.xml.transform.TransformerFactoryConfigurationError;
 import javax.xml.transform.dom.DOMSource;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpression;
-import javax.xml.xpath.XPathExpressionException;
 import javax.xml.xpath.XPathFactory;
 
-import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.IOUtils;
+import org.apache.log4j.Logger;
 import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.InputSource;
-import org.xml.sax.SAXException;
+import org.w3c.dom.traversal.DocumentTraversal;
+import org.w3c.dom.traversal.NodeFilter;
+import org.w3c.dom.traversal.NodeIterator;
 
-import com.qatrend.pomegranate.logging.PLogger;
+import com.qatrend.pomegranate.reflection.ReflectionUtil;
 import com.qatrend.pomegranate.regex.RegexUtil;
 
-
 public class XmlUtil {
-	public boolean printOnce = true;
-	private static int depth = 0;
-	private static int nodeDepth = 0;
+    private static Logger logger = Logger.getLogger(new Exception().getStackTrace()[0].getClassName());
 
-	public static void printValueXPath(String xmlFilePath, String xpathStr)  
-	throws ParserConfigurationException, SAXException, 
-	IOException, XPathExpressionException {
+    public static Document stringToDoc(String srcXmlString) {
+        Document doc = null;
+        try {
+            DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+            domFactory.setNamespaceAware(false); // never forget this!
+            DocumentBuilder builder = null;
+            builder = domFactory.newDocumentBuilder();
+            doc = builder.parse(new ByteArrayInputStream(srcXmlString.getBytes()));
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return doc;
+    }
 
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(true); // never forget this!
-		DocumentBuilder builder = domFactory.newDocumentBuilder();
-		Document doc = builder.parse( xmlFilePath );
+    public static Object execXpathGetNodeList(String srcXmlString, String xPath) {
+        Object result = null;
+        try {
+            Document doc = stringToDoc(srcXmlString);
+            XPathFactory factory = XPathFactory.newInstance();
+            XPath xpath = factory.newXPath();
+            XPathExpression expr = xpath.compile(xPath);
+            result = expr.evaluate(doc, XPathConstants.NODESET);
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return result;
+    }
 
-		XPathFactory factory = XPathFactory.newInstance();
-		XPath xpath = factory.newXPath();
-		XPathExpression expr 
-		= xpath.compile( xpathStr );
+    public static Object execXpathGetNode(String srcXmlString, String xPath) {
+        Object result = null;
+        try {
+            Document doc = stringToDoc(srcXmlString);
+            XPathFactory factory = XPathFactory.newInstance();
+            XPath xpath = factory.newXPath();
+            XPathExpression expr = xpath.compile(xPath);
+            result = expr.evaluate(doc, XPathConstants.NODE);
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return result;
+    }
 
-		Object result = expr.evaluate(doc, XPathConstants.NODESET);
-		NodeList nodes = (NodeList) result;
-		for (int i = 0; i < nodes.getLength(); i++) {
-			PLogger.getLogger().debug( nodes.item(i).getNodeValue()); 
-		}
+    public static String getValueXPath(String srcXmlString, String xPath) {
+        String value = null;
+        try {
+            Object result = execXpathGetNode(srcXmlString, xPath);
+            Node node = (Node) result;
+            if (node.getNodeType() == Node.ELEMENT_NODE) {
+                value = node.getTextContent();
+            } else {
+                value = node.getNodeValue();
+            }
+            logger.debug(xPath + " = " + value);
+        } catch (Exception ex) {
+            logger.error(ex.getMessage() + " Could not extract any value using xpath: " + xPath);
+        }
+        return value;
+    }
 
-	}
+    public String retrieveAttributeValue(Document document, String xpath, String attribute) {
+        String attributeValue = null;
+        try {
+            XPath xPath = XPathFactory.newInstance().newXPath();
+            XPathExpression xPathExpression = xPath.compile(xpath + "/" + attribute);
+            attributeValue = "" + xPathExpression.evaluate(document, XPathConstants.STRING);
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return attributeValue;
+    }
 
-	public static ArrayList<String> getValuesXPath(String xmlStr, String xpathStr)  
-	throws ParserConfigurationException, SAXException, 
-	IOException, XPathExpressionException {
-		ArrayList<String> xpathValues = new ArrayList<String>();
-		String value = "";
-		
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(true); // never forget this!
-		DocumentBuilder builder = domFactory.newDocumentBuilder();
-		InputSource is = new InputSource(new StringReader(xmlStr));
-		Document doc = builder.parse( is );
+    public static ArrayList<Node> getNodesXPath(String srcXmlString, String xPath) {
+        DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+        domFactory.setNamespaceAware(false); // never forget this!
+        Document doc = null;
+        DocumentBuilder builder = null;
+        ArrayList<Node> nodesList = new ArrayList<Node>();
+        try {
+            builder = domFactory.newDocumentBuilder();
+            doc = builder.parse(new ByteArrayInputStream(srcXmlString.getBytes()));
+            XPathFactory factory = XPathFactory.newInstance();
+            XPath xpath = factory.newXPath();
+            XPathExpression expr = xpath.compile(xPath);
 
-		XPathFactory factory = XPathFactory.newInstance();
-		XPath xpath = factory.newXPath();
-		XPathExpression expr 
-		= xpath.compile( xpathStr );
+            Object result = expr.evaluate(doc, XPathConstants.NODESET);
 
-		Object result = expr.evaluate(doc, XPathConstants.NODESET);
-		NodeList nodes = (NodeList) result;
-		for (int i = 0; i < nodes.getLength(); i++) {
-			value = nodes.item(i).getNodeValue();
-			//PLogger.getLogger().debug(  value );
-			xpathValues.add(value);
-		}
-		return xpathValues;
-	}
+            NodeList xPathNodes = (NodeList) result;
+            logger.debug("xpath result count: " + xPathNodes.getLength());
+            // iterate through all the nodes
+            for (int i = 0; i < xPathNodes.getLength(); i++) {
+                nodesList.add(xPathNodes.item(i));
+            }
+        } catch (Exception ex) {
+            logger.error(ex.getMessage());
+        }
+        return nodesList;
+    }
 
-	public static String getValueXPathFromXmlStr(String xmlStr, String xpathStr)  
-	throws ParserConfigurationException, SAXException, 
-	IOException, XPathExpressionException {
-		String value = "";
-		
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(true); // never forget this!
-		DocumentBuilder builder = domFactory.newDocumentBuilder();
-		InputSource is = new InputSource(new StringReader(xmlStr));
-		Document doc = builder.parse( is );
+    public static String setValueXPath(String srcXmlString, String xPath, String newVal) {
+        DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+        domFactory.setNamespaceAware(false); // never forget this!
+        int i, j;
+        Document doc = null;
+        DocumentBuilder builder = null;
+        try {
+            builder = domFactory.newDocumentBuilder();
+            doc = builder.parse(new ByteArrayInputStream(srcXmlString.getBytes()));
+            XPathFactory factory = XPathFactory.newInstance();
+            XPath xpath = factory.newXPath();
+            XPathExpression expr = xpath.compile(xPath);
 
-		XPathFactory factory = XPathFactory.newInstance();
-		XPath xpath = factory.newXPath();
-		XPathExpression expr 
-		= xpath.compile( xpathStr );
+            Object result = expr.evaluate(doc, XPathConstants.NODESET);
 
-		Object result = expr.evaluate(doc, XPathConstants.NODESET);
-		NodeList nodes = (NodeList) result;
-		value = nodes.item(0).getNodeValue();
-		return value;
-	}
-	
+            NodeList xPathNodes = (NodeList) result;
+            logger.debug("xpath result count: " + xPathNodes.getLength());
+            logger.debug(xPathNodes.item(0).getNodeName() + " = " + xPathNodes.item(0).getTextContent());
 
-	public static String getValueXPath(String xmlFilePath, String xpathStr)  
-	throws ParserConfigurationException, SAXException, 
-	IOException, XPathExpressionException {
+            // get list of all nodes in doc
+            NodeList nodes = doc.getElementsByTagName("*");
+            // iterate through all the nodes
+            for (i = 0; i < xPathNodes.getLength(); i++) {
+                // for each node in xpath result - traverse through all nodes in
+                // doc to find match
+                for (j = 0; j < nodes.getLength(); j++) {
+                    if (nodes.item(j).isSameNode(xPathNodes.item(i))) {
+                        logger.debug("Old value " + i + ": " + xPathNodes.item(i).getNodeName() + " = " + xPathNodes.item(i).getTextContent());
+                        nodes.item(j).setTextContent(newVal);
+                        logger.debug("New value " + i + ": " + xPathNodes.item(i).getNodeName() + " = " + xPathNodes.item(i).getTextContent());
+                        break;
+                    }
+                }
+            }
+        } catch (Exception ex) {
+            logger.error(ex.getMessage());
+            // ex.printStackTrace();
+        }
+        return getW3CXmlFromDoc(doc);
+    }
 
-		String xpathVal;
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(true); // never forget this!
-		DocumentBuilder builder = domFactory.newDocumentBuilder();
-		Document doc = builder.parse( xmlFilePath );
+    public static String getAttribute(String xmlStr, String tagName, String attrName) {
+        DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+        domFactory.setNamespaceAware(false); // never forget this!
+        Document doc = null;
+        DocumentBuilder builder = null;
+        String value = null;
 
-		XPathFactory factory = XPathFactory.newInstance();
-		XPath xpath = factory.newXPath();
-		XPathExpression expr 
-		= xpath.compile( xpathStr );
+        try {
+            builder = domFactory.newDocumentBuilder();
+            doc = builder.parse(new ByteArrayInputStream(xmlStr.getBytes()));
+            // Get the root element
+            Node rootNode = doc.getFirstChild();
+            NodeList nodeList = doc.getElementsByTagName(tagName);
+            if ((nodeList.getLength() == 0) || (nodeList.item(0).getAttributes().getNamedItem(attrName) == null)) {
+                logger.error("Either node " + tagName + " or attribute " + attrName + " not found.");
+            } else {
+                value = nodeList.item(0).getAttributes().getNamedItem(attrName).getNodeValue();
+                logger.debug("value of " + tagName + " attribute: " + attrName + " = " + value);
+            }
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
 
-		Object result = expr.evaluate(doc, XPathConstants.NODESET);
-		NodeList nodes = (NodeList) result;
-		return nodes.item(0).getNodeValue();
-	}
+        return value;
+    }
 
-	public static ArrayList<String> execXPath(String xmlStr, String xpathStr)  
-	throws ParserConfigurationException, SAXException, 
-	IOException, XPathExpressionException {
+    public static String setAttribute(String xmlStr, String tagName, String attrName, String newValue) {
+        DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
+        domFactory.setNamespaceAware(false); // never forget this!
+        int i, j;
+        Document doc = null;
+        DocumentBuilder builder = null;
 
-		ArrayList<String> xpathResult = new ArrayList<String>();
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(true); // never forget this!
-		DocumentBuilder builder = domFactory.newDocumentBuilder();
-		//Document doc = builder.parse( xmlFilePath );
-		Document doc = builder.parse(xmlStr);
+        StringWriter stringOut = new StringWriter();
+        try {
+            builder = domFactory.newDocumentBuilder();
+            doc = builder.parse(new ByteArrayInputStream(xmlStr.getBytes()));
+            // Get the root element
+            Node rootNode = doc.getFirstChild();
+            NodeList nodeList = doc.getElementsByTagName(tagName);
+            if ((nodeList.getLength() == 0) || (nodeList.item(0).getAttributes().getNamedItem(attrName) == null)) {
+                logger.error("Either node " + tagName + " or attribute " + attrName + " not found.");
+            } else {
+                logger.debug("value of " + tagName + " attribute: " + attrName + " = "
+                        + nodeList.item(0).getAttributes().getNamedItem(attrName).getNodeValue());
+                nodeList.item(0).getAttributes().getNamedItem(attrName).setNodeValue(newValue);
 
-		XPathFactory factory = XPathFactory.newInstance();
-		XPath xpath = factory.newXPath();
-		XPathExpression expr 
-		= xpath.compile( xpathStr );
+                // write the content into xml file
+                TransformerFactory transformerFactory = TransformerFactory.newInstance();
+                Transformer transformer = transformerFactory.newTransformer();
+                DOMSource source = new DOMSource(doc);
+                StreamResult result = new StreamResult(stringOut);
+                // StreamResult result = new StreamResult(new File(filepath));
+                transformer.transform(source, result);
+                logger.debug("Updated XML: \n" + stringOut.toString());
+            }
+        } catch (Exception ex) {
+            System.out.println(ex.getMessage());
+        }
 
-		Object result = expr.evaluate(doc, XPathConstants.NODESET);
-		NodeList nodes = (NodeList) result;
-		for(int i=0; i<nodes.getLength(); i++) {
-			xpathResult.add(nodes.item(i).getNodeValue());
-		}
-		return xpathResult;
+        return stringOut.toString();
+    }
 
-	}
-	
-	
-	public static void setNodeValue(String xmlFilePath, String nodeName, String attrName, String attrVal, String tmpFilePath)  
-	throws ParserConfigurationException, SAXException, 
-	IOException, XPathExpressionException {
+    private static String getW3CXmlFromDoc(Document doc) {
+        String xmlString = null;
+        Transformer transformer;
+        try {
+            transformer = TransformerFactory.newInstance().newTransformer();
+            // transformer.setOutputProperty(OutputKeys.INDENT, "yes"); // yes,
+            // no
+            transformer.setOutputProperty(OutputKeys.INDENT, "no");
 
-		String xpathVal;
-		int i, j;
-		RegexUtil reUtil = new RegexUtil();
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(true); // never forget this!
-		DocumentBuilder builder = domFactory.newDocumentBuilder();
-		Document doc = builder.parse( xmlFilePath );
-		XPathFactory factory = XPathFactory.newInstance();
-		XPath xpath = factory.newXPath();
-		XPathExpression expr = xpath.compile( "/" );
-		
+            // initialize StreamResult with File object to save to file
+            StreamResult xmlStream = new StreamResult(new StringWriter());
+            DOMSource source = new DOMSource(doc);
+            transformer.transform(source, xmlStream);
+            xmlString = xmlStream.getWriter().toString();
+        } catch (Exception ex) {
+            logger.error(ex.getMessage());
+        }
 
-		Object result = expr.evaluate(doc, XPathConstants.STRING);
-		
+        return xmlString;
+    }
 
-		NodeList nodes = doc.getElementsByTagName("*");
-		//iterate through all the nodes
-		for(i=0; i<nodes.getLength(); i++) {
-			//PLogger.getLogger().debug( "Node name - " + nodes.item(i).getNodeName() + " = " + nodes.item(i).getTextContent() );
-			NamedNodeMap nodeMap = nodes.item(i).getAttributes();
-			for(j=0; j<nodeMap.getLength(); j++) {
-				if( reUtil.checkPatternExists("splitMOD", nodeMap.item(j).getNodeValue()  )   ) {      // (nodeMap.item(j).getNodeName() == "name") && (nodeMap.item(j).getNodeValue() != "xxx")
-					PLogger.getLogger().debug( "Attributes - " + nodeMap.item(j).getNodeName() + " = " + nodeMap.item(j).getNodeValue() + " = " + nodes.item(i).getTextContent());
-					nodes.item(i).setTextContent("4");
-					
-				}
-				//PLogger.getLogger().debug( "Attributes - " + nodeMap.item(j).getNodeName() + " = " + nodeMap.item(j).getNodeValue());
-			}
-		}
-		
-		Transformer transformer;
-		try {
-			transformer = TransformerFactory.newInstance().newTransformer();
-			//transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			transformer.setOutputProperty(OutputKeys.INDENT, "no");
+    public static String replaceTokens(String xmlStr) {
+        StringBuffer sb = new StringBuffer();
+        String[] tokens = xmlStr.split("\\s");
+        String tokenToModify = null, token = null;
 
-			//initialize StreamResult with File object to save to file
-			StreamResult xmlStream = new StreamResult(new StringWriter());
-			DOMSource source = new DOMSource(doc);
-			transformer.transform(source, xmlStream);
-			String xmlString = xmlStream.getWriter().toString();
-			PLogger.getLogger().debug( xmlString);		
-			
-			File file = new File( tmpFilePath );
-			FileUtils.writeStringToFile(file, xmlString );
-			
-			
-		} catch (TransformerConfigurationException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (TransformerFactoryConfigurationError e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (TransformerException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+        for (int i = 0; i < tokens.length; i++) {
+            token = tokens[i];
+            tokenToModify = null;
+            // tokenToModify is set to null or the matched fullyqualified java
+            // path - package.class.method
+            tokenToModify = RegexUtil.getMatch(token, "java:([\\w.]+)");
+            if (tokenToModify != null) {
+                String className = tokenToModify.substring(0, tokenToModify.lastIndexOf("."));
+                String methodName = tokenToModify.substring(tokenToModify.lastIndexOf(".") + 1);
+                tokenToModify = (String) ReflectionUtil.callMethod(className, methodName, null);
+                token = token.replaceFirst("(\\$\\{java:([\\w.]+)\\})", tokenToModify);
+            }
+            sb.append(token);
+            sb.append(" ");
+        }
+        logger.info(sb.toString());
+        return sb.toString();
+    }
 
+    public static void printNodesAndAttributes(String xmlStr) {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        try {
+            logger.info("Xml processing:");
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            InputStream inStream = new ByteArrayInputStream(xmlStr.getBytes(StandardCharsets.UTF_8));
+            // or InputSource inputSource = new InputSource( new StringReader(
+            // xmlStr ) );
+            Document doc = db.parse(inStream);
+            DocumentTraversal dt = (DocumentTraversal) doc;
+            NodeIterator i = dt.createNodeIterator(doc, NodeFilter.SHOW_ELEMENT, null, false);
+            Node node = i.nextNode();
+            while (node != null) {
+                logger.info("Node type: " + node.getNodeType() + " Node name: " + node.getNodeName());
+                logger.info("    Attributes: " + attributesStr(node));
+                node = i.nextNode();
+            }
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+    }
 
+    public static Node getNode(String xmlStr, String nodeName, Map<String, String> attributesMap) {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        Node returnNode = null;
+        try {
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            InputStream inStream = new ByteArrayInputStream(xmlStr.getBytes(StandardCharsets.UTF_8));
+            // or InputSource inputSource = new InputSource( new StringReader(
+            // xmlStr ) );
+            Document doc = db.parse(inStream);
+            DocumentTraversal dt = (DocumentTraversal) doc;
+            NodeIterator i = dt.createNodeIterator(doc, NodeFilter.SHOW_ELEMENT, null, false);
+            Node node = i.nextNode();
+            while (node != null) {
+                if (node.getNodeName().equals(nodeName)) {
+                    if (attributesExist(node, attributesMap)) {
+                        returnNode = node;
+                        break;
+                    }
+                }
+                node = i.nextNode();
+            }
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return returnNode;
+    }
 
-	}
+    public static Node getNode(Node parentNode, String nodeName, Map<String, String> attributesMap) {
+        Node returnNode = null;
+        try {
+            DocumentTraversal dt = (DocumentTraversal) parentNode.getOwnerDocument();
+            NodeIterator i = dt.createNodeIterator(parentNode, NodeFilter.SHOW_ELEMENT, null, false);
+            Node node = i.nextNode();
+            while (node != null) {
+                if (node.getNodeName().equals(nodeName)) {
+                    if (attributesExist(node, attributesMap)) {
+                        returnNode = node;
+                        break;
+                    }
+                }
+                node = i.nextNode();
+            }
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return returnNode;
+    }
 
-	public static void printW3CXML(org.w3c.dom.Document doc, String tmpFilePath) {
-		//
-		Transformer transformer;
-		try {
-			transformer = TransformerFactory.newInstance().newTransformer();
-			//transformer.setOutputProperty(OutputKeys.INDENT, "yes"); // yes, no
-			transformer.setOutputProperty(OutputKeys.INDENT, "no");
+    public static ArrayList<Node> getNodeList(String xmlStr, String nodeName, Map<String, String> attributesMap) {
+        DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+        ArrayList<Node> returnNodeList = new ArrayList<Node>();
+        try {
+            DocumentBuilder db = dbf.newDocumentBuilder();
+            InputStream inStream = new ByteArrayInputStream(xmlStr.getBytes(StandardCharsets.UTF_8));
+            // or InputSource inputSource = new InputSource( new StringReader(
+            // xmlStr ) );
+            Document doc = db.parse(inStream);
+            DocumentTraversal dt = (DocumentTraversal) doc;
+            NodeIterator i = dt.createNodeIterator(doc, NodeFilter.SHOW_ELEMENT, null, false);
+            Node node = i.nextNode();
+            while (node != null) {
+                if (node.getNodeName().equals(nodeName)) {
+                    if (attributesExist(node, attributesMap)) {
+                        returnNodeList.add(node);
+                    }
+                }
+                node = i.nextNode();
+            }
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return returnNodeList;
+    }
 
-			//initialize StreamResult with File object to save to file
-			StreamResult xmlStream = new StreamResult(new StringWriter());
-			DOMSource source = new DOMSource(doc);
-			transformer.transform(source, xmlStream);
-			String xmlString = xmlStream.getWriter().toString();
-			//PLogger.getLogger().debug( xmlString);		
-			
-			File file = new File( tmpFilePath );
-			FileUtils.writeStringToFile(file, xmlString );
-		}
-		catch (Exception ex) {
-			PLogger.getLogger().debug( ex.getMessage());
-		}
-	}
+    public static ArrayList<Node> getNodeList(Node parentNode, String nodeName, Map<String, String> attributesMap) {
+        ArrayList<Node> returnNodeList = new ArrayList<Node>();
+        try {
+            DocumentTraversal dt = (DocumentTraversal) parentNode.getOwnerDocument();
+            NodeIterator i = dt.createNodeIterator(parentNode, NodeFilter.SHOW_ELEMENT, null, false);
+            Node node = i.nextNode();
+            while (node != null) {
+                if (node.getNodeName().equals(nodeName)) {
+                    if (attributesExist(node, attributesMap)) {
+                        returnNodeList.add(node);
+                    }
+                }
+                node = i.nextNode();
+            }
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+        return returnNodeList;
+    }
 
-	public static String getW3CXmlFromDoc(org.w3c.dom.Document doc) {
-		String xmlString = null;
-		Transformer transformer;
-		try {
-			transformer = TransformerFactory.newInstance().newTransformer();
-			//transformer.setOutputProperty(OutputKeys.INDENT, "yes"); // yes, no
-			transformer.setOutputProperty(OutputKeys.INDENT, "no");
+    public static boolean attributesExist(Node node, Map<String, String> attributesMap) {
+        boolean exists = true;
+        Map<String, String> nodeAttributes = new HashMap<String, String>();
+        for (int i = 0; i < node.getAttributes().getLength(); i++) {
+            nodeAttributes.put(node.getAttributes().item(i).getNodeName(), node.getAttributes().item(i).getNodeValue());
+        }
 
-			//initialize StreamResult with File object to save to file
-			StreamResult xmlStream = new StreamResult(new StringWriter());
-			DOMSource source = new DOMSource(doc);
-			transformer.transform(source, xmlStream);
-			xmlString = xmlStream.getWriter().toString();
-			//PLogger.getLogger().debug( xmlString);		
-		}
-		catch (Exception ex) {
-			PLogger.getLogger().debug( ex.getMessage());
-		}
-		
-		return xmlString;
-	}
-	
-	public static void printW3CXMLWithIndent(org.w3c.dom.Document doc, String tmpFilePath) {
-		//
-		Transformer transformer;
-		try {
-			transformer = TransformerFactory.newInstance().newTransformer();
-			//transformer.setOutputProperty(OutputKeys.INDENT, "yes"); // yes, no
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        if (attributesMap == null) {
+            return exists;
+        }
 
-			//initialize StreamResult with File object to save to file
-			StreamResult xmlStream = new StreamResult(new StringWriter());
-			DOMSource source = new DOMSource(doc);
-			transformer.transform(source, xmlStream);
-			String xmlString = xmlStream.getWriter().toString();
-			//PLogger.getLogger().debug( xmlString);		
-			
-			File file = new File( tmpFilePath );
-			FileUtils.writeStringToFile(file, xmlString );
-		}
-		catch (Exception ex) {
-			PLogger.getLogger().debug( ex.getMessage());
-		}
-	}
-	
-	
-	public static void printW3CXML(org.w3c.dom.Document doc) {
-		//
-		Transformer transformer;
-		try {
-			transformer = TransformerFactory.newInstance().newTransformer();
-			//transformer.setOutputProperty(OutputKeys.INDENT, "yes");
-			transformer.setOutputProperty(OutputKeys.INDENT, "yes");
+        for (String attr : attributesMap.keySet()) {
+            if (nodeAttributes.get(attr) == null) {
+                exists = false;
+                break;
+            }
+            if (!nodeAttributes.get(attr).equals(attributesMap.get(attr))) {
+                exists = false;
+                break;
+            }
+        }
 
-			//initialize StreamResult with File object to save to file
-			StreamResult xmlStream = new StreamResult(new StringWriter());
-			DOMSource source = new DOMSource(doc);
-			transformer.transform(source, xmlStream);
-			String xmlString = xmlStream.getWriter().toString();
-			PLogger.getLogger().debug( xmlString);		
-		}
-		catch (Exception ex) {
-			PLogger.getLogger().debug( ex.getMessage());
-		}
-	}
-	
-	
-	public static void setValueXPath(String srcFile, String xPath, String newVal, String tgtFile) {
-		//
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(false); // never forget this!
-		int i, j;
-		try {
-			DocumentBuilder builder = domFactory.newDocumentBuilder();
-			Document doc = builder.parse( srcFile );
-			//Document doc = builder.parse( "tmp/test.xml" );
-			XPathFactory factory = XPathFactory.newInstance();
-			XPath xpath = factory.newXPath();
-			XPathExpression expr = xpath.compile( xPath );
+        return exists;
+    }
 
-			Object result = expr.evaluate(doc, XPathConstants.NODESET);
-			
-			NodeList xPathNodes = (NodeList) result;
-			PLogger.getLogger().debug( "xpath result count: " + xPathNodes.getLength());
-			PLogger.getLogger().debug( xPathNodes.item(0).getNodeName() + " = " + xPathNodes.item(0).getTextContent()  );
-			
-			//get list of all nodes in doc
-			NodeList nodes = doc.getElementsByTagName("*");
-			//iterate through all the nodes
-			for(i=0; i<xPathNodes.getLength(); i++) {
-				//for each node in xpath result - traverse through all nodes in doc to find match
-				for(j=0; j<nodes.getLength(); j++) {
-					if(  nodes.item(j).isSameNode(xPathNodes.item(i))  ) {   
-						PLogger.getLogger().debug( "Old value " + i + ": " + xPathNodes.item(i).getNodeName() + " = " + xPathNodes.item(i).getTextContent()  );
-						nodes.item(j).setTextContent(newVal);
-						PLogger.getLogger().debug( "New value " + i + ": " + xPathNodes.item(i).getNodeName() + " = " + xPathNodes.item(i).getTextContent()  );
-						break;
-					}
-					
-				}
-			}
-			
-			printW3CXML(doc, tgtFile);
-			//PLogger.getLogger().debug( "updated xml has been written to: " + tgtFile);
-			
-		}
-		catch (Exception ex) {
-			PLogger.getLogger().debug( ex.getMessage());
-			//ex.printStackTrace();
-		}
-		
-	}
+    public static String attributesStr(Node node) {
+        if (node == null) {
+            return null;
+        }
+        StringBuffer attributes = new StringBuffer();
+        for (int i = 0; i < node.getAttributes().getLength(); i++) {
+            attributes.append(node.getAttributes().item(i).getNodeName() + "=" + node.getAttributes().item(i).getNodeValue() + ", ");
+        }
+        if (attributes.length() > 1) {
+            attributes.delete(attributes.length() - 2, attributes.length());
+        } else {
+            attributes.append(node.getNodeName() + " has NO attributes.");
+        }
+        return attributes.toString();
+    }
 
-	public static void xmlInsertNode(String xmlSrcFile, String insertBeforeTagName, String nodeStr, String xmlTgtFile) {
-		PLogger.getLogger().debug( "//////////////////////////////////////////////////////////////////////");
-		String methodName = Thread.currentThread().getStackTrace()[1].getMethodName();
-		PLogger.getLogger().debug( "Starting " + methodName + "...");
-		PLogger.getLogger().debug( "//////////////////////////////////////////////////////////////////////");
-		
-		try{
-			DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-			//domFactory.setNamespaceAware(true); // never forget this!
-			DocumentBuilder builder = domFactory.newDocumentBuilder();
-			Document doc = builder.parse( xmlSrcFile );
-			XmlUtil xmlUtil = new XmlUtil();
-			xmlUtil.printW3CXML(doc, "src/test/resources/tmp/temp.xml");
-			Element ele1 = builder.parse( IOUtils.toInputStream(nodeStr, "UTF-8") ).getDocumentElement();
-			NodeList list1 = doc.getElementsByTagName( insertBeforeTagName );
-			doc.setStrictErrorChecking(false);
-			doc.insertBefore(ele1, list1.item(0));
-			xmlUtil.printW3CXML(doc, "src/test/resources/tmp/temp1.xml");
-		}
-		catch(Exception ex){
-			PLogger.getLogger().debug( "Exception: " + ex.getMessage());
-		}
-		
-		
-	}
-	
-	public static String setValueXPath(String inputXmlStr, String xPath, String newVal) {
-		String updatedXmlStr = null;
-		DocumentBuilderFactory domFactory = DocumentBuilderFactory.newInstance();
-		domFactory.setNamespaceAware(false); // never forget this!
-		int i, j;
-		try {
-			DocumentBuilder builder = domFactory.newDocumentBuilder();
-			Document doc = builder.parse( new InputSource(new StringReader(inputXmlStr)) );  
-			//Document doc = builder.parse( "tmp/test.xml" );
-			XPathFactory factory = XPathFactory.newInstance();
-			XPath xpath = factory.newXPath();
-			XPathExpression expr = xpath.compile( xPath );
+    public static void printNodeList(NodeList nodeList) {
+        StringBuffer buffer = new StringBuffer();
+        for (int i = 0; i < nodeList.getLength(); i++) {
+            Node node = nodeList.item(i);
+            buffer.append(node.getNodeName() + " = " + node.getNodeValue() + " Attributes: " + attributesStr(node) + "\n");
+        }
+        logger.info(buffer);
+    }
 
-			Object result = expr.evaluate(doc, XPathConstants.NODESET);
-			
-			NodeList xPathNodes = (NodeList) result;
-			PLogger.getLogger().debug( "xpath result count: " + xPathNodes.getLength());
-			PLogger.getLogger().debug( xPathNodes.item(0).getNodeName() + " = " + xPathNodes.item(0).getTextContent()  );
-			
-			//get list of all nodes in doc
-			NodeList nodes = doc.getElementsByTagName("*");
-			//iterate through all the nodes
-			for(i=0; i<xPathNodes.getLength(); i++) {
-				//for each node in xpath result - traverse through all nodes in doc to find match
-				for(j=0; j<nodes.getLength(); j++) {
-					if(  nodes.item(j).isSameNode(xPathNodes.item(i))  ) {   
-						PLogger.getLogger().debug( "Old value " + i + ": " + xPathNodes.item(i).getNodeName() + " = " + xPathNodes.item(i).getTextContent()  );
-						nodes.item(j).setTextContent(newVal);
-						PLogger.getLogger().debug( "New value " + i + ": " + xPathNodes.item(i).getNodeName() + " = " + xPathNodes.item(i).getTextContent()  );
-						break;
-					}
-					
-				}
-			}
-			
-			updatedXmlStr = getW3CXmlFromDoc(doc);
-			//PLogger.getLogger().debug( "updated xml: \n" + updatedXmlStr);
-			
-		}
-		catch (Exception ex) {
-			PLogger.getLogger().debug( ex.getMessage());
-			//ex.printStackTrace();
-		}
-		return updatedXmlStr;
-		
-	}
-	
-	public static String setAttribute(String xmlStr, String tagName, String attrName, String newValue){
-		StringWriter stringOut = new StringWriter ();
-		try{
-			DocumentBuilderFactory docFactory = DocumentBuilderFactory.newInstance();
-			DocumentBuilder docBuilder = docFactory.newDocumentBuilder();
-			InputStream is = new ByteArrayInputStream(xmlStr.getBytes());
-			Document doc = docBuilder.parse( is );
-			// Get the root element
-			Node rootNode = doc.getFirstChild();
-			NodeList nodeList = doc.getElementsByTagName(tagName);
-			if( (nodeList.getLength() == 0) || (nodeList.item(0).getAttributes().getNamedItem(attrName) == null) ) {
-				System.out.println("Either node " + tagName + " or attribute " + attrName + " not found.");
-			}
-			else{
-				System.out.println("value of " + tagName +  " attribute: " + attrName + " = " + nodeList.item(0).getAttributes().getNamedItem("MaxEntriesReturned").getNodeValue());
-				nodeList.item(0).getAttributes().getNamedItem("MaxEntriesReturned").setNodeValue(newValue);
-				
-				// write the content into xml file
-				TransformerFactory transformerFactory = TransformerFactory.newInstance();
-				Transformer transformer = transformerFactory.newTransformer();
-				DOMSource source = new DOMSource(doc);
-				StreamResult result = new StreamResult(stringOut);
-				//StreamResult result = new StreamResult(new File(filepath));
-				transformer.transform(source, result);	
-				System.out.println(stringOut.toString());
-			}
-		}
-		catch(Exception ex){
-			System.out.println(ex.getMessage());
-		}
-		
-		return stringOut.toString();
-	}
-	
-	public void printDepth(Node node){
-		Node childNode;
-		String nodeName;
-		String depthStr;
-		ArrayList<String> ignoreList = new ArrayList<String>();
-		ignoreList.add("#text");
-		ignoreList.add("#comment");
-		nodeName = node.getNodeName();
-		//String format = String.format("%%0%dd", 3);
-		if(printOnce == true){
-			depthStr = String.format("%03d", depth);
-			System.out.println("[" + depthStr + "]" + getSpaces(depth) + nodeName);
-			printOnce = false;
-		}
-		try{
-			NodeList nodeList = node.getChildNodes();
-			for(int i=0; i<nodeList.getLength(); i++){
-				childNode = nodeList.item(i);
-				nodeName = childNode.getNodeName();
-				if( !ignoreList.contains(nodeName)){
-					depth++;
-					depthStr = String.format("%03d", depth);
-					System.out.println("[" + depthStr + "]" + getSpaces(depth) + nodeName);
-					printDepth(childNode);
-					depth--;
-				}
-			}
-		}
-		catch(Exception ex){
-			System.out.println(ex.getMessage());
-		}
-	}
+    public static void printNodeList(ArrayList<Node> nodeList) {
+        StringBuffer buffer = new StringBuffer();
+        for (Node node : nodeList) {
+            buffer.append(node.getNodeName() + " = " + node.getNodeValue() + " Attributes: " + attributesStr(node) + "\n");
+        }
+        logger.info(buffer);
+    }
 
-	public int getNodeDepth(Node node, String nodeNameToFind){
-		Node childNode;
-		String nodeName;
-		String depthStr;
-		ArrayList<String> ignoreList = new ArrayList<String>();
-		ignoreList.add("#text");
-		ignoreList.add("#comment");
-		nodeName = node.getNodeName();
-		//String format = String.format("%%0%dd", 3);
-		if(printOnce == true){
-			depthStr = String.format("%03d", depth);
-			System.out.println("[" + depthStr + "]" + getSpaces(depth) + nodeName);
-			if(nodeName.equals(nodeNameToFind)) {
-				nodeDepth = depth;
-				return nodeDepth;
-			}
-			printOnce = false;
-		}
-		try{
-			NodeList nodeList = node.getChildNodes();
-			for(int i=0; i<nodeList.getLength(); i++){
-				childNode = nodeList.item(i);
-				nodeName = childNode.getNodeName();
-				if( !ignoreList.contains(nodeName)){
-					depth++;
-					depthStr = String.format("%03d", depth);
-					System.out.println("[" + depthStr + "]" + getSpaces(depth) + nodeName);
-					if(nodeName.equals(nodeNameToFind)) {
-						nodeDepth = depth;
-						return nodeDepth;
-					}
-					getNodeDepth(childNode, nodeNameToFind);
-					depth--;
-				}
-			}
-		}
-		catch(Exception ex){
-			System.out.println(ex.getMessage());
-		}
-		return nodeDepth;
-	}
-	
-	
-	private String getSpaces(int n){
-		String space = "";
-		for(int i=0; i<n; i++){
-			space += "  ";
-		}
-		return space;
-	}
-	
-} 
+    public static String assignDynamicValues(String inputXML, Map<String, String> dynamicValues) {
+        for (String key : dynamicValues.keySet()) {
+            if (inputXML.contains("{" + key + "}")) {
+                inputXML = inputXML.replaceAll("\\{" + key + "\\}", dynamicValues.get(key));
+            }
+        }
+        return inputXML;
+    }
 
+    public static String assignDynamicValue(String input, String dynamicKey, String dynamicValue) {
+        if (input.contains("{" + dynamicKey + "}")) {
+            input = input.replaceAll("\\{" + dynamicKey + "\\}", dynamicValue);
+        }
+        return input;
+    }
+
+}

@@ -13,6 +13,7 @@ import com.qatrend.pomegranate.util.StringUtil;
 
 public class EnvUtil {
     private static Logger logger = Logger.getLogger(new Exception().getStackTrace()[0].getClassName());
+    public static String propsFilePath = "src/test/resources/config/env.properties";;
 
     public static String getEnvOrProperty(String propName) {
         String value = System.getenv(propName);
@@ -32,13 +33,6 @@ public class EnvUtil {
             value = System.getProperty(propName.toUpperCase());
         }
         return value;
-    }
-
-    public static String getUrl(String apiName) {
-        String env = getEnvOrProperty("ENV");
-        String urlFilePath = "src/test/resources/config/" + env + "-url.properties";
-        String url = getProperty(urlFilePath, apiName);
-        return url;
     }
 
     public static String getProperty(String propFilePath, String propName) {
@@ -86,29 +80,16 @@ public class EnvUtil {
     }
 
     public static String getEnvSpecificProperty(String propName) {
-        String env = getEnvOrProperty("ENV");
-        String urlFilePath = "src/test/resources/config/" + env + "-env.properties";
-        String value = getProperty(urlFilePath, propName);
+        String value = getProperty(propsFilePath, propName);
         return value;
     }
 
     public static String getPropertyFilePath() {
-        String env = getEnvOrProperty("ENV");
-        String filePath = "src/test/resources/config/" + env + "-env.properties";
-        return filePath;
+        return propsFilePath;
     }
 
-    public static String getWsUrl(String orderNo) {
-        String shardsStr = getEnvSpecificProperty("SHARDS");
-        int shardsInt = Integer.parseInt(shardsStr);
-        String wsUrl = null;
-        long orderLong = Long.parseLong(orderNo);
-        for (int i = 0; i < shardsInt; i++) {
-            if ((orderLong % shardsInt) == i) {
-                wsUrl = getEnvSpecificProperty("OMS-WS-URL-S" + (i + 1));
-                break;
-            }
-        }
-        return wsUrl;
+    public static void setPropertyFilePath(String filePath) {
+        propsFilePath = filePath;
     }
+    
 }

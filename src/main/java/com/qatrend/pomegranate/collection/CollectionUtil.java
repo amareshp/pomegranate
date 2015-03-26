@@ -3,6 +3,7 @@ package com.qatrend.pomegranate.collection;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
 import com.qatrend.pomegranate.logging.PLogger;
 
@@ -68,7 +69,7 @@ public class CollectionUtil {
 	 */
 	public static void printList(List<String> list) {
 		for(String str : list) {
-			PLogger.getLogger().debug( str);
+			PLogger.getLogger().info( str);
 		}
 	}
 	
@@ -102,5 +103,22 @@ public class CollectionUtil {
 		return csvStr;
 	}
 	
+    public static void printMap(Map<String, Object> map) {
+        for(String key : map.keySet()) {
+            PLogger.getLogger().info(key + " : " + map.get(key));
+        }
+    }
+
+    public static void printMapStr(Map<String, String> map) {
+        for(String key : map.keySet()) {
+            PLogger.getLogger().info(key + " : " + map.get(key));
+        }
+    }
+	
+    public static void printListOfObjects(List<Object> list) {
+        for(Object element : list) {
+            PLogger.getLogger().info(element);
+        }
+    }
 	
 }

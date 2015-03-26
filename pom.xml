@@ -52,7 +52,7 @@
 		<org.springframework.version>3.0.5.RELEASE
 		</org.springframework.version>
 		<!-- Add this to get rid of java 8 javadoc errors -->
-		<!--  <additionalparam>-Xdoclint:none</additionalparam>  -->
+		<!-- <additionalparam>-Xdoclint:none</additionalparam> -->
 	</properties>
 
 
@@ -86,6 +86,21 @@
 			<groupId>org.yaml</groupId>
 			<artifactId>snakeyaml</artifactId>
 			<version>1.15</version>
+		</dependency>
+		<dependency>
+			<groupId>javax.jms</groupId>
+			<artifactId>jms</artifactId>
+			<version>2.0</version>
+		</dependency>
+		<dependency>
+			<groupId>com.tibco.ems</groupId>
+			<artifactId>jms-client-admin</artifactId>
+			<version>8.0.0</version>
+		</dependency>
+		<dependency>
+			<groupId>tibco.jms</groupId>
+			<artifactId>tibco_jms</artifactId>
+			<version>8.1</version>
 		</dependency>
 
 		<!-- START - json dependencies -->

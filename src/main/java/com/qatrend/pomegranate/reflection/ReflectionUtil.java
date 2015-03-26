@@ -148,27 +148,26 @@ public class ReflectionUtil {
     
 
 	
-	public static void callMethod(String className, String methodName, Object arglist[]) {
-		try {
-			Class cls = Class.forName( className );
-			Class partypes[] = new Class[1];
-			//partypes[0] = Integer.TYPE;
-			partypes[0] = ArrayList.class;
-			//partypes[1] = Integer.TYPE;
-			Method meth = cls.getMethod( methodName, partypes );
-			com.qatrend.pomegranate.reflection.TestClass methobj = new com.qatrend.pomegranate.reflection.TestClass();
-			//use reflection to instantiate the className
-			//Object arglist[] = new Object[2];
-			//arglist[0] = new Integer(37);
-			//arglist[1] = new Integer(47);
-			Object retobj = meth.invoke( methobj, arglist);
-			Integer retval = (Integer) retobj;
-			System.out.println(retval.intValue());
-		} 
-		catch (Exception e) {
-			e.printStackTrace();
-		}
-	}
+    public static Object callMethod(String className, String methodName, Object arglist[]) {
+        Object retObj = null;
+        try {
+            Class cls = Class.forName(className);
+            Class partypes[] = new Class[0];
+            // partypes[0] = Integer.TYPE;
+            // partypes[0] = ArrayList.class;
+            // partypes[1] = Integer.TYPE;
+            Method meth = cls.getMethod(methodName, partypes);
+            // use reflection to instantiate the className
+            // Object arglist[] = new Object[2];
+            // arglist[0] = new Integer(37);
+            // arglist[1] = new Integer(47);
+            retObj = meth.invoke(meth, arglist);
+            logger.debug("Evaluated value: " + retObj);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return retObj;
+    }
 	
 	public static void main(String args[]) {
 		ArrayList<Object> list = new ArrayList<Object>();

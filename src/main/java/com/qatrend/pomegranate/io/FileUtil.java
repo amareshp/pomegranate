@@ -6,14 +6,21 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
+import java.io.FilenameFilter;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 
+import org.apache.log4j.Logger;
+
 import com.qatrend.pomegranate.exception.ExceptionUtil;
+import com.qatrend.pomegranate.regex.RegexUtil;
 import com.qatrend.pomegranate.system.SystemUtil;
 
 public class FileUtil {
+    private static Logger logger = Logger.getLogger(new Exception().getStackTrace()[0].getClassName());
 
 	public static ArrayList<String> readFileAsList(String filePath){
 		ArrayList<String> strList = new ArrayList<String>();
@@ -131,4 +138,95 @@ public class FileUtil {
 		}
 		return new String( b );	
 		}
+	
+    public static synchronized String getLineWithPattern(String filePath, String pattern) {
+        logger.info("Searching for pattern: " + pattern + " -- File: " + filePath);
+        String retVal = null;
+        File file = new File(filePath);
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            String line;
+            while ((line = br.readLine()) != null) {
+               if(RegexUtil.checkPatternExists(line, pattern)) {
+                   retVal = line;
+                   break;
+               }
+            }
+            br.close();
+        } catch(Exception ex) {
+            logger.error(ex);
+        }
+        return retVal;
+    }
+    public static synchronized ArrayList<String> getLinesWithPattern(String filePath, String pattern) {
+        logger.info("Searching for pattern: " + pattern + " -- File: " + filePath);
+        ArrayList<String> retVal = new ArrayList<String>();
+        File file = new File(filePath);
+        try {
+            BufferedReader br = new BufferedReader(new FileReader(file));
+            String line;
+            while ((line = br.readLine()) != null) {
+               if(RegexUtil.checkPatternExists(line, pattern)) {
+                   retVal.add(line);
+               }
+            }
+            br.close();
+        } catch(Exception ex) {
+            logger.error(ex);
+        }
+        return retVal;
+    }
+
+    public static synchronized void truncateFile(String filePath) {
+        try {
+            FileWriter fw = new FileWriter(new File(filePath));
+        } catch (Exception ex) {
+            logger.error(ex);
+        }
+    }
+
+    public static synchronized void appendToFile(String filePath, String strToAppend) {
+        try {
+            FileWriter fw = new FileWriter(filePath, true);
+            PrintWriter out = new PrintWriter(new BufferedWriter(fw));
+            out.println(strToAppend);
+            out.flush();
+            out.close();
+        } catch (IOException e) {
+            logger.error(e);
+        }
+    }
+
+    public static synchronized boolean renameFile(String oldPath, String newPath) throws IOException {
+        File file = new File(oldPath);
+        // File (or directory) with new name
+        File file2 = new File(newPath);
+        if (file2.exists()) {
+            throw new java.io.IOException("file exists");
+        }
+        // Rename file (or directory)
+        boolean success = file.renameTo(file2);
+        return success;
+    }
+
+    public static synchronized boolean deleteFiles(String directory, String matchPattern) {
+        // "dailyReport_08.*\\.txt"
+        boolean success = true;
+        final String patternToMatch = matchPattern;
+        final File folder = new File(directory);
+        final File[] files = folder.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(final File dir, final String name) {
+                return name.matches(patternToMatch);
+            }
+        });
+        for (final File file : files) {
+            if (!file.delete()) {
+                logger.error("Can't remove " + file.getAbsolutePath());
+                success = false;
+            }
+        }
+        return success;
+    }
+    
 }

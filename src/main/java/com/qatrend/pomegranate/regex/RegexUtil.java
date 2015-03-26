@@ -134,5 +134,44 @@ public class RegexUtil {
 		}
 		return foundGroupsList;
 	}
+	
+    public static String getMatch(String searchInStr, String regex) {
+        String matchedStr = null;
+        Pattern pattern;
+        Matcher matcher;
+        pattern = Pattern.compile(regex);
+        matcher = pattern.matcher(searchInStr);
+        if (matcher.find())
+            matchedStr = matcher.group();
+        return matchedStr;
+    }
+    public static String getMatch(String searchInStr, String regex, int groupNo) {
+        String matchedStr = null;
+        Pattern pattern;
+        Matcher matcher;
+        pattern = Pattern.compile(regex);
+        matcher = pattern.matcher(searchInStr);
+        if (matcher.find())
+            matchedStr = matcher.group(groupNo);
+        return matchedStr;
+    }
+
+    public static String getMatchFirstExistingGrp(String searchInStr, String regex, int[] groupNos) {
+        String matchedStr = null;
+        Pattern pattern;
+        Matcher matcher;
+        pattern = Pattern.compile(regex);
+        matcher = pattern.matcher(searchInStr);
+        if (matcher.find()) {
+            for(int i=0; i< groupNos.length; i++) {
+                matchedStr = matcher.group(groupNos[i]);
+                if(matchedStr != null) {
+                    break;
+                }
+            }
+        }
+        return matchedStr;
+    }
+	
 
 }
