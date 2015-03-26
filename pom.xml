@@ -29,13 +29,13 @@
 	</scm>
 	<distributionManagement>
 		<repository>
-			<id>sonatype.repo</id>
+			<id>sonatype.releases</id>
 			<name>Sonatype Snapshots Repository</name>
 			<url>https://oss.sonatype.org/service/local/staging/deploy/maven2</url>
 		</repository>
 		<!-- snapshotRepository -->
 		<snapshotRepository>
-			<id>sonatype.repo</id>
+			<id>sonatype.snapshots</id>
 			<name>Sonatype Snapshots Repository</name>
 			<url>https://oss.sonatype.org/content/repositories/snapshots</url>
 		</snapshotRepository>
