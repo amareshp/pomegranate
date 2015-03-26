@@ -3,9 +3,10 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>com.qatrend</groupId>
 	<artifactId>pomegranate</artifactId>
-	<version>1.1-SNAPSHOT</version>
+	<version>1.0</version>
 	<name>pomegranate</name>
 	<description>test automation utilities</description>
+	<url>https://github.com/amareshp/pomegranate</url>
 	<licenses>
 		<license>
 			<name>Apache License, Version 2.0</name>
@@ -240,12 +241,12 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
-				<version>2.1.2</version>
+				<version>2.2.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
 						<goals>
-							<goal>jar</goal>
+							<goal>jar-no-fork</goal>
 						</goals>
 					</execution>
 				</executions>
@@ -253,7 +254,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
-				<version>2.8.1</version>
+				<version>2.9.1</version>
 				<executions>
 					<execution>
 						<id>attach-javadoc</id>
@@ -305,6 +306,18 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.sonatype.plugins</groupId>
+				<artifactId>nexus-staging-maven-plugin</artifactId>
+				<version>1.6.3</version>
+				<extensions>true</extensions>
+				<configuration>
+					<serverId>sonatype.releases</serverId>
+					<stagingRepositoryId></stagingRepositoryId>
+					<nexusUrl>https://oss.sonatype.org/</nexusUrl>
+					<autoReleaseAfterClose>true</autoReleaseAfterClose>
+				</configuration>
 			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
